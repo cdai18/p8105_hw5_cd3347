@@ -1,0 +1,93 @@
+---
+title: "Homework 5"
+author: "Christina Dai"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+library(tidyverse)
+library(rvest)
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = 0.6,
+  out.width = "90%"
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_color_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+```
+
+
+# Problem 2
+
+## Create tidy dataframe
+
+Dataframe including all file names:
+
+```{r}
+study_df = 
+  tibble(
+     files = list.files("./data")
+  )
+```
+
+
+Iterate over file names and include results in a new variable:
+
+```{r}
+study_df = 
+  study_df %>% 
+  mutate(
+    data = map(files, read_csv)
+  )
+```
+
+Tidy data:
+
+```{r}
+study_df_tidy = 
+  study_df %>% 
+  unnest(data) %>% 
+  mutate(files = str_remove(files, ".csv")) %>% 
+  mutate(
+    files = str_replace(files, "con_", "control"),
+    files = str_replace(files, "exp_", "experiment")
+    ) %>% 
+  rename(arm_and_id = files) %>% 
+  pivot_longer(
+    week_1:week_8,
+    names_to = "week",
+    values_to = "value"
+  ) %>% 
+  mutate(
+    week = str_remove(week, "week_")
+  )
+```
+
+Make a spaghetti plot of observations over time:
+
+```{r}
+study_df_tidy %>% 
+  ggplot(aes(x = week, y = value, group = arm_and_id, color = str_detect(arm_and_id, "control"))) + 
+  geom_line() + 
+  scale_color_discrete(name = "Study arm", labels = c("experiment", "control"))
+```
+
+The experiment group and control group start around the same point in week 1, but the experiment group's values show an increase over time while the control group is stagnant.
+
+
+
+
+
+
+

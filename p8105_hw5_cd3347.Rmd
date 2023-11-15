@@ -47,7 +47,7 @@ study_df =
 
 Iterate over file names and include results in a new variable:
 
-```{r}
+```{r, message = FALSE}
 setwd("~/P8105/p8105_hw5_cd3347/data")
 study_df = 
   study_df %>% 
@@ -63,11 +63,7 @@ study_df_tidy =
   study_df %>% 
   unnest(data) %>% 
   mutate(files = str_remove(files, ".csv")) %>% 
-  mutate(
-    files = str_replace(files, "con_", "control"),
-    files = str_replace(files, "exp_", "experiment")
-    ) %>% 
-  rename(arm_and_id = files) %>% 
+  separate(col = files, into = c("arm", "id"), sep = "_") %>% 
   pivot_longer(
     week_1:week_8,
     names_to = "week",
@@ -75,16 +71,20 @@ study_df_tidy =
   ) %>% 
   mutate(
     week = str_remove(week, "week_")
-  )
+  ) %>% 
+  mutate(
+    arm = str_replace(arm, "con", "control"),
+    arm = str_replace(arm, "exp", "experiment")
+    )
 ```
 
 Make a spaghetti plot of observations over time:
 
 ```{r}
 study_df_tidy %>% 
-  ggplot(aes(x = week, y = value, group = arm_and_id, color = str_detect(arm_and_id, "control"))) + 
+  ggplot(aes(x = week, y = value, group = id, color = id)) + 
   geom_line() + 
-  scale_color_discrete(name = "Study arm", labels = c("experiment", "control"))
+  facet_grid(. ~ arm)
 ```
 
 The experiment group and control group start around the same point in week 1, but the experiment group's values show an increase over time while the control group is stagnant.
@@ -113,7 +113,7 @@ mu_0 =
     mu = 0
   ) %>% 
   mutate(
-    datasets = map(.x = mu, ~ rerun(5000, sim_datasets(.x)))
+    datasets = map(.x = mu, ~ map(1:5000, ~ sim_datasets(.x)))
   ) %>% 
   unnest(datasets)
 ```
@@ -161,6 +161,31 @@ Binding the rows together so we can create a plot:
 htests = 
   bind_rows(mu_0_test, mu_all_test)
 ```
+
+Make a plot showing proportion of times the null was rejected and true value of mu.
+
+```{r}
+prop_plot = 
+  htests %>% 
+  mutate(reject = (p_value <= 0.05)) %>% 
+  group_by(mu_value, reject) %>% 
+  summarize(is_true = n()) %>% 
+  filter(reject == "TRUE") %>% 
+  mutate(proportion = is_true / 5000) %>% 
+  ggplot(aes(x = mu_value, y = proportion)) + 
+  geom_point() + 
+  geom_line()
+
+prop_plot
+  
+```
+
+
+
+
+
+
+
 
 
 

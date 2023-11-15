@@ -25,6 +25,9 @@ options(
 
 scale_colour_discrete = scale_color_viridis_d
 scale_fill_discrete = scale_fill_viridis_d
+
+
+set.seed(1)
 ```
 
 
@@ -45,6 +48,7 @@ study_df =
 Iterate over file names and include results in a new variable:
 
 ```{r}
+setwd("~/P8105/p8105_hw5_cd3347/data")
 study_df = 
   study_df %>% 
   mutate(
@@ -86,8 +90,77 @@ study_df_tidy %>%
 The experiment group and control group start around the same point in week 1, but the experiment group's values show an increase over time while the control group is stagnant.
 
 
+# Problem 3
+
+Fix n and sigma:
+
+```{r}
+sim_datasets = function(mu, n = 30, sigma = 4) {
+  
+  tibble(
+    x = rnorm(n = n, mean = mu, sd = sigma)
+  )
+
+}
+```
 
 
+Generate 5000 datasets for mu = 0:
+
+```{r}
+mu_0 = 
+  tibble(
+    mu = 0
+  ) %>% 
+  mutate(
+    datasets = map(.x = mu, ~ rerun(5000, sim_datasets(.x)))
+  ) %>% 
+  unnest(datasets)
+```
+
+Conduct t test on each dataset and save the estimate and p-value:
+
+```{r}
+t_test_0 = function(df, mu = 0) {
+  
+  t.test(x = df, mu = mu) %>% 
+    broom::tidy()
+  
+}
+
+mu_0_test = 
+  mu_0 %>% 
+  mutate(ttest = map(datasets, t_test_0)) %>% 
+  unnest(ttest) %>%
+  mutate(mu_value = 0) %>% 
+  select(-statistic, -parameter, -conf.low, -conf.high, -method, -alternative, -datasets, -mu) %>% 
+  relocate(mu_value) %>% 
+  janitor::clean_names()
+```
+
+Conducting the test on mu = 1, 2, 3, 4, 5, 6:
+
+```{r}
+t_test_all = function(df, mu_values = c(1, 2, 3, 4, 5, 6)) {
+  
+  map_df(mu_values, ~t.test(x = df, mu = .x) %>% broom::tidy() %>% mutate(mu_value = .x))
+  
+}
+
+mu_all_test = 
+  map_df(mu_0$datasets, t_test_all) %>% 
+  select(mu_value, estimate, p.value) %>% 
+  janitor::clean_names() %>% 
+  arrange(mu_value)
+
+```
+
+Binding the rows together so we can create a plot:
+
+```{r}
+htests = 
+  bind_rows(mu_0_test, mu_all_test)
+```
 
 
 
